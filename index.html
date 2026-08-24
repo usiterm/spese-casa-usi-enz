@@ -356,26 +356,33 @@
 
         const div = document.createElement("div");
 
-        div.className = "expense";
+div.className = "expense";
 
-        div.innerHTML = `
-          <div class="expense-top">
-            <div class="expense-description">
-              ${escapeHtml(expense.description || "Spesa")}
-            </div>
+div.innerHTML = `
+  <div class="expense-top">
+    <div class="expense-description">
+      ${escapeHtml(expense.description || "Spesa")}
+    </div>
 
-            <div class="expense-amount">
-              € ${amount.toFixed(2)}
-            </div>
-          </div>
+    <div class="expense-amount">
+      € ${amount.toFixed(2)}
+    </div>
+  </div>
 
-          <div class="expense-info">
-            Pagata da ${escapeHtml(name)}
-            · ${escapeHtml(expense.expense_date)}
-          </div>
-        `;
+  <div class="expense-info">
+    Pagata da ${escapeHtml(name)}
+    · ${escapeHtml(expense.expense_date)}
+  </div>
 
-        list.appendChild(div);
+  <button
+    onclick="deleteExpense('${expense.id}')"
+    style="margin-top:10px; background:#fee2e2; color:#991b1b;"
+  >
+    🗑️ Elimina
+  </button>
+`;
+
+list.appendChild(div);
       });
     }
 
@@ -392,6 +399,27 @@
       formatEuro(usi - enz);
   }
 
+  async function deleteExpense(id) {
+
+  const conferma = confirm(
+    "Sei sicuro di voler eliminare questa spesa?"
+  );
+
+  if (!conferma) return;
+
+  const { error } = await supabaseClient
+    .from("expenses")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    alert("Errore durante l'eliminazione: " + error.message);
+    return;
+  }
+
+  await loadExpenses();
+  }
+  
   async function addExpense() {
 
     const description =
