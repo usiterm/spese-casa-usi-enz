@@ -95,6 +95,46 @@
       margin-top: 5px;
     }
 
+    /* =========================
+       CONGUAGLIO
+    ========================= */
+
+    .settlement {
+      background: #f9fafb;
+      border-radius: 14px;
+      padding: 18px;
+    }
+
+    .settlement-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .settlement-result {
+      font-size: 18px;
+      font-weight: bold;
+      line-height: 1.4;
+    }
+
+    .settlement-detail {
+      margin-top: 7px;
+      color: #6b7280;
+      font-size: 14px;
+    }
+
+    .settlement-positive {
+      color: #166534;
+    }
+
+    .settlement-negative {
+      color: #991b1b;
+    }
+
+    .settlement-equal {
+      color: #166534;
+    }
+
     input,
     select {
       width: 100%;
@@ -291,7 +331,9 @@
 
   <div id="appContent">
 
-    <!-- RIEPILOGO -->
+    <!-- =========================
+         RIEPILOGO
+    ========================= -->
 
     <div class="card">
 
@@ -322,7 +364,40 @@
     </div>
 
 
-    <!-- AGGIUNGI SPESA -->
+    <!-- =========================
+         CHI DEVE QUANTO
+    ========================= -->
+
+    <div class="card">
+
+      <div class="settlement">
+
+        <div class="settlement-title">
+          💰 Chi deve quanto?
+        </div>
+
+        <div
+          id="settlementResult"
+          class="settlement-result"
+        >
+          Siete in pari ✅
+        </div>
+
+        <div
+          id="settlementDetail"
+          class="settlement-detail"
+        >
+          La spesa viene divisa al 50%.
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- =========================
+         AGGIUNGI SPESA
+    ========================= -->
 
     <div class="card">
 
@@ -401,7 +476,9 @@
     </div>
 
 
-    <!-- ULTIME SPESE -->
+    <!-- =========================
+         ULTIME SPESE
+    ========================= -->
 
     <div class="card">
 
@@ -616,11 +693,6 @@
     let displayName = "";
 
 
-    /*
-      Prima cerchiamo il nome
-      nella tabella household_members.
-    */
-
     const { data, error } =
       await supabaseClient
         .from("household_members")
@@ -647,11 +719,6 @@
     }
 
 
-    /*
-      Se non troviamo il nome,
-      usiamo l'email come alternativa.
-    */
-
     if (!displayName) {
 
       const email =
@@ -661,10 +728,6 @@
         email.split("@")[0];
     }
 
-
-    /*
-      Rendiamo il nome più leggibile.
-    */
 
     displayName =
       displayName.trim();
@@ -1103,12 +1166,179 @@
       formatEuro(enz);
 
 
+    /*
+      Saldo attuale:
+      positivo = Usi ha pagato di più
+      negativo = Enz ha pagato di più
+    */
+
+    const balance =
+      usi - enz;
+
+
     document.getElementById(
       "balance"
     ).textContent =
-      formatEuro(
-        usi - enz
+      formatEuro(balance);
+
+
+    /* =========================
+       CONGUAGLIO 50/50
+    ========================= */
+
+    updateSettlement(
+      total,
+      usi,
+      enz
+    );
+  }
+
+
+  /* =========================
+     CALCOLO CHI DEVE QUANTO
+  ========================= */
+
+  function updateSettlement(
+    total,
+    usi,
+    enz
+  ) {
+
+    const result =
+      document.getElementById(
+        "settlementResult"
       );
+
+    const detail =
+      document.getElementById(
+        "settlementDetail"
+      );
+
+
+    /*
+      Ogni persona dovrebbe
+      sostenere metà del totale.
+    */
+
+    const quota =
+      total / 2;
+
+
+    /*
+      Differenza rispetto
+      alla quota corretta.
+    */
+
+    const usiDifference =
+      usi - quota;
+
+    const enzDifference =
+      enz - quota;
+
+
+    /*
+      Piccola tolleranza per
+      evitare problemi con i decimali.
+    */
+
+    const tolerance =
+      0.01;
+
+
+    /* =========================
+       SONO IN PARI
+    ========================= */
+
+    if (
+      Math.abs(usiDifference) <= tolerance &&
+      Math.abs(enzDifference) <= tolerance
+    ) {
+
+      result.textContent =
+        "Siete in pari ✅";
+
+      result.className =
+        "settlement-result settlement-equal";
+
+      detail.textContent =
+        "Avete pagato entrambi la vostra quota.";
+
+      return;
+    }
+
+
+    /* =========================
+       ENZ DEVE A USI
+    ========================= */
+
+    if (
+      usi > enz
+    ) {
+
+      const amountOwed =
+        (usi - enz) / 2;
+
+
+      result.textContent =
+        "💸 Enz deve a Usi " +
+        formatEuro(amountOwed);
+
+
+      result.className =
+        "settlement-result settlement-positive";
+
+
+      detail.textContent =
+        "Per dividere le spese al 50%, ciascuno dovrebbe sostenere " +
+        formatEuro(quota) +
+        ".";
+
+      return;
+    }
+
+
+    /* =========================
+       USI DEVE A ENZ
+    ========================= */
+
+    if (
+      enz > usi
+    ) {
+
+      const amountOwed =
+        (enz - usi) / 2;
+
+
+      result.textContent =
+        "💸 Usi deve a Enz " +
+        formatEuro(amountOwed);
+
+
+      result.className =
+        "settlement-result settlement-negative";
+
+
+      detail.textContent =
+        "Per dividere le spese al 50%, ciascuno dovrebbe sostenere " +
+        formatEuro(quota) +
+        ".";
+
+      return;
+    }
+
+
+    /*
+      Caso di sicurezza.
+    */
+
+    result.textContent =
+      "Siete in pari ✅";
+
+    result.className =
+      "settlement-result settlement-equal";
+
+    detail.textContent =
+      "Non c'è nessun conguaglio.";
   }
 
 
