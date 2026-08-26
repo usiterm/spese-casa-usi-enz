@@ -180,6 +180,50 @@
       color: #6b7280;
       margin-top: 5px;
     }
+
+    .category-summary {
+      margin-top: 8px;
+    }
+
+    .category-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .category-row:last-child {
+      border-bottom: 0;
+    }
+
+    .category-name {
+      font-weight: 500;
+    }
+
+    .category-value {
+      font-weight: bold;
+      white-space: nowrap;
+    }
+
+    .who-owes-box {
+      background: #f9fafb;
+      border-radius: 14px;
+      padding: 15px;
+      line-height: 1.6;
+    }
+
+    .who-owes-main {
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .who-owes-detail {
+      color: #6b7280;
+      font-size: 14px;
+      margin-top: 5px;
+    }
   </style>
 </head>
 
@@ -191,6 +235,7 @@
     <h1>🏠 Spese Casa</h1>
     <p>usi & enz</p>
   </header>
+
 
   <!-- LOGIN -->
 
@@ -229,6 +274,7 @@
 
   <div id="appContent">
 
+
     <!-- RIEPILOGO -->
 
     <div class="card">
@@ -253,6 +299,44 @@
         <div class="summary-box">
           enz
           <strong id="enzTotal">€ 0,00</strong>
+        </div>
+
+      </div>
+
+
+      <!-- SPESE PER CATEGORIA -->
+
+      <div style="margin-top:20px;">
+
+        <h3 style="margin:0 0 10px;">
+          📊 Spese per categoria
+        </h3>
+
+        <div
+          id="categorySummary"
+          class="category-summary"
+        >
+          <div class="empty">
+            Nessuna spesa ancora.
+          </div>
+        </div>
+
+      </div>
+
+
+      <!-- CHI DEVE QUANTO -->
+
+      <div style="margin-top:20px;">
+
+        <h3 style="margin:0 0 10px;">
+          🤝 Chi deve quanto
+        </h3>
+
+        <div
+          id="whoOwes"
+          class="who-owes-box"
+        >
+          Nessun dato disponibile.
         </div>
 
       </div>
@@ -283,18 +367,22 @@
       <!-- CATEGORIA -->
 
       <select id="category">
+
         <option value="">
           Seleziona categoria
         </option>
+
       </select>
 
 
       <!-- CHI HA PAGATO -->
 
       <select id="paidBy">
+
         <option value="">
           Chi ha pagato?
         </option>
+
       </select>
 
 
@@ -356,6 +444,7 @@
 
 
 <script>
+
 
   /* =========================
      SUPABASE
@@ -664,6 +753,8 @@
     let usi = 0;
     let enz = 0;
 
+    const categoryTotals = {};
+
 
     const list =
       document.getElementById(
@@ -690,6 +781,32 @@
         total += amount;
 
 
+        /* =========================
+           TOTALE PER CATEGORIA
+        ========================= */
+
+        const categoryName =
+          expense.categories?.name ||
+          "Senza categoria";
+
+
+        if (
+          !categoryTotals[categoryName]
+        ) {
+
+          categoryTotals[categoryName] =
+            0;
+        }
+
+
+        categoryTotals[categoryName] +=
+          amount;
+
+
+        /* =========================
+           MEMBRO
+        ========================= */
+
         const member =
           members.find(
             m =>
@@ -708,6 +825,7 @@
           name.toLowerCase() ===
           "usi"
         ) {
+
           usi += amount;
         }
 
@@ -716,6 +834,7 @@
           name.toLowerCase() ===
           "enz"
         ) {
+
           enz += amount;
         }
 
@@ -725,15 +844,17 @@
             "div"
           );
 
+
         div.className =
           "expense";
 
 
         /* =========================
-           CATEGORIA
+           CATEGORIA SPESA
         ========================= */
 
         let categoryHtml = "";
+
 
         if (
           expense.categories &&
@@ -763,7 +884,9 @@
           [];
 
 
-        if (attachments.length > 0) {
+        if (
+          attachments.length > 0
+        ) {
 
           const attachment =
             attachments[0];
@@ -897,6 +1020,144 @@
       formatEuro(
         usi - enz
       );
+
+
+    /* =========================
+       RIEPILOGO CATEGORIE
+    ========================= */
+
+    const categorySummary =
+      document.getElementById(
+        "categorySummary"
+      );
+
+
+    const categoryEntries =
+      Object.entries(
+        categoryTotals
+      ).sort(
+        (a, b) => b[1] - a[1]
+      );
+
+
+    if (
+      categoryEntries.length === 0
+    ) {
+
+      categorySummary.innerHTML =
+        '<div class="empty">Nessuna spesa ancora.</div>';
+
+    } else {
+
+      categorySummary.innerHTML =
+        categoryEntries
+          .map(
+            ([name, value]) => `
+
+              <div class="category-row">
+
+                <span class="category-name">
+                  🏷️
+                  ${escapeHtml(name)}
+                </span>
+
+                <strong class="category-value">
+                  ${formatEuro(value)}
+                </strong>
+
+              </div>
+
+            `
+          )
+          .join("");
+    }
+
+
+    /* =========================
+       CHI DEVE QUANTO
+    ========================= */
+
+    const whoOwes =
+      document.getElementById(
+        "whoOwes"
+      );
+
+
+    const half =
+      total / 2;
+
+
+    const difference =
+      usi - half;
+
+
+    if (
+      total === 0
+    ) {
+
+      whoOwes.innerHTML = `
+        <div class="who-owes-detail">
+          Nessuna spesa ancora.
+        </div>
+      `;
+
+    } else if (
+      Math.abs(difference) < 0.01
+    ) {
+
+      whoOwes.innerHTML = `
+
+        <div class="who-owes-main">
+          Siete in pari! ✅
+        </div>
+
+        <div class="who-owes-detail">
+          Avete pagato
+          ${formatEuro(half)}
+          a testa.
+        </div>
+
+      `;
+
+    } else if (
+      difference > 0
+    ) {
+
+      whoOwes.innerHTML = `
+
+        <div class="who-owes-main">
+          enz deve
+          ${formatEuro(difference)}
+          a usi.
+        </div>
+
+        <div class="who-owes-detail">
+          Quota a testa:
+          ${formatEuro(half)}
+        </div>
+
+      `;
+
+    } else {
+
+      whoOwes.innerHTML = `
+
+        <div class="who-owes-main">
+          usi deve
+          ${formatEuro(
+            Math.abs(difference)
+          )}
+          a enz.
+        </div>
+
+        <div class="who-owes-detail">
+          Quota a testa:
+          ${formatEuro(half)}
+        </div>
+
+      `;
+    }
+
   }
 
 
@@ -1266,8 +1527,6 @@
         );
 
 
-        /* Pulizia della spesa */
-
         await supabaseClient
           .from("expenses")
           .delete()
@@ -1323,8 +1582,6 @@
         );
 
 
-        /* Elimina file */
-
         await supabaseClient.storage
           .from(
             STORAGE_BUCKET
@@ -1333,8 +1590,6 @@
             filePath
           ]);
 
-
-        /* Elimina spesa */
 
         await supabaseClient
           .from("expenses")
