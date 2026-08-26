@@ -44,6 +44,31 @@
       opacity: .75;
     }
 
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .user-greeting {
+      margin-top: 14px;
+      font-size: 17px;
+      font-weight: bold;
+    }
+
+    .logout-button {
+      background: #374151;
+      color: white;
+      padding: 9px 13px;
+      font-size: 14px;
+      white-space: nowrap;
+    }
+
+    .logout-button:hover {
+      background: #4b5563;
+    }
+
     .card {
       background: white;
       border-radius: 18px;
@@ -181,48 +206,18 @@
       margin-top: 5px;
     }
 
-    .category-summary {
-      margin-top: 8px;
-    }
+    @media (max-width: 480px) {
+      .header-top {
+        align-items: flex-start;
+      }
 
-    .category-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 0;
-      border-bottom: 1px solid #e5e7eb;
-    }
+      .logout-button {
+        padding: 8px 10px;
+      }
 
-    .category-row:last-child {
-      border-bottom: 0;
-    }
-
-    .category-name {
-      font-weight: 500;
-    }
-
-    .category-value {
-      font-weight: bold;
-      white-space: nowrap;
-    }
-
-    .who-owes-box {
-      background: #f9fafb;
-      border-radius: 14px;
-      padding: 15px;
-      line-height: 1.6;
-    }
-
-    .who-owes-main {
-      font-size: 18px;
-      font-weight: bold;
-    }
-
-    .who-owes-detail {
-      color: #6b7280;
-      font-size: 14px;
-      margin-top: 5px;
+      header h1 {
+        font-size: 23px;
+      }
     }
   </style>
 </head>
@@ -232,8 +227,30 @@
 <div class="app">
 
   <header>
-    <h1>🏠 Spese Casa</h1>
-    <p>usi & enz</p>
+
+    <div class="header-top">
+
+      <div>
+        <h1>🏠 Spese Casa</h1>
+        <p>usi & enz</p>
+      </div>
+
+      <button
+        class="logout-button"
+        onclick="logout()"
+      >
+        🚪 Esci
+      </button>
+
+    </div>
+
+    <div
+      id="userGreeting"
+      class="user-greeting"
+    >
+      👋 Ciao
+    </div>
+
   </header>
 
 
@@ -274,7 +291,6 @@
 
   <div id="appContent">
 
-
     <!-- RIEPILOGO -->
 
     <div class="card">
@@ -299,44 +315,6 @@
         <div class="summary-box">
           enz
           <strong id="enzTotal">€ 0,00</strong>
-        </div>
-
-      </div>
-
-
-      <!-- SPESE PER CATEGORIA -->
-
-      <div style="margin-top:20px;">
-
-        <h3 style="margin:0 0 10px;">
-          📊 Spese per categoria
-        </h3>
-
-        <div
-          id="categorySummary"
-          class="category-summary"
-        >
-          <div class="empty">
-            Nessuna spesa ancora.
-          </div>
-        </div>
-
-      </div>
-
-
-      <!-- CHI DEVE QUANTO -->
-
-      <div style="margin-top:20px;">
-
-        <h3 style="margin:0 0 10px;">
-          🤝 Chi deve quanto
-        </h3>
-
-        <div
-          id="whoOwes"
-          class="who-owes-box"
-        >
-          Nessun dato disponibile.
         </div>
 
       </div>
@@ -445,7 +423,6 @@
 
 <script>
 
-
   /* =========================
      SUPABASE
   ========================= */
@@ -503,6 +480,18 @@
         "loginBox"
       ).style.display = "block";
 
+      document.getElementById(
+        "appContent"
+      ).style.display = "none";
+
+      document.querySelector(
+        ".logout-button"
+      ).style.display = "none";
+
+      document.getElementById(
+        "userGreeting"
+      ).style.display = "none";
+
       return;
     }
 
@@ -510,9 +499,23 @@
       data.session.user;
 
     document.getElementById(
+      "loginBox"
+    ).style.display = "none";
+
+    document.getElementById(
       "appContent"
     ).style.display = "block";
 
+    document.querySelector(
+      ".logout-button"
+    ).style.display = "block";
+
+    document.getElementById(
+      "userGreeting"
+    ).style.display = "block";
+
+
+    await loadUserGreeting();
 
     await loadMembers();
 
@@ -558,6 +561,126 @@
 
 
     location.reload();
+  }
+
+
+  /* =========================
+     LOGOUT
+  ========================= */
+
+  async function logout() {
+
+    const conferma =
+      confirm(
+        "Sei sicuro di voler uscire?"
+      );
+
+    if (!conferma) {
+      return;
+    }
+
+
+    const { error } =
+      await supabaseClient.auth.signOut();
+
+
+    if (error) {
+
+      alert(
+        "Errore durante il logout: " +
+        error.message
+      );
+
+      return;
+    }
+
+
+    currentUser = null;
+
+    location.reload();
+  }
+
+
+  /* =========================
+     SALUTO UTENTE
+  ========================= */
+
+  async function loadUserGreeting() {
+
+    const greeting =
+      document.getElementById(
+        "userGreeting"
+      );
+
+
+    let displayName = "";
+
+
+    /*
+      Prima cerchiamo il nome
+      nella tabella household_members.
+    */
+
+    const { data, error } =
+      await supabaseClient
+        .from("household_members")
+        .select("display_name")
+        .eq(
+          "household_id",
+          HOUSEHOLD_ID
+        )
+        .eq(
+          "user_id",
+          currentUser.id
+        )
+        .maybeSingle();
+
+
+    if (
+      !error &&
+      data &&
+      data.display_name
+    ) {
+
+      displayName =
+        data.display_name;
+    }
+
+
+    /*
+      Se non troviamo il nome,
+      usiamo l'email come alternativa.
+    */
+
+    if (!displayName) {
+
+      const email =
+        currentUser.email || "";
+
+      displayName =
+        email.split("@")[0];
+    }
+
+
+    /*
+      Rendiamo il nome più leggibile.
+    */
+
+    displayName =
+      displayName.trim();
+
+
+    if (displayName) {
+
+      displayName =
+        displayName.charAt(0).toUpperCase() +
+        displayName.slice(1);
+    }
+
+
+    greeting.textContent =
+      "👋 Ciao " +
+      displayName;
   }
 
 
@@ -753,8 +876,6 @@
     let usi = 0;
     let enz = 0;
 
-    const categoryTotals = {};
-
 
     const list =
       document.getElementById(
@@ -781,32 +902,6 @@
         total += amount;
 
 
-        /* =========================
-           TOTALE PER CATEGORIA
-        ========================= */
-
-        const categoryName =
-          expense.categories?.name ||
-          "Senza categoria";
-
-
-        if (
-          !categoryTotals[categoryName]
-        ) {
-
-          categoryTotals[categoryName] =
-            0;
-        }
-
-
-        categoryTotals[categoryName] +=
-          amount;
-
-
-        /* =========================
-           MEMBRO
-        ========================= */
-
         const member =
           members.find(
             m =>
@@ -825,7 +920,6 @@
           name.toLowerCase() ===
           "usi"
         ) {
-
           usi += amount;
         }
 
@@ -834,7 +928,6 @@
           name.toLowerCase() ===
           "enz"
         ) {
-
           enz += amount;
         }
 
@@ -844,17 +937,15 @@
             "div"
           );
 
-
         div.className =
           "expense";
 
 
         /* =========================
-           CATEGORIA SPESA
+           CATEGORIA
         ========================= */
 
         let categoryHtml = "";
-
 
         if (
           expense.categories &&
@@ -884,9 +975,7 @@
           [];
 
 
-        if (
-          attachments.length > 0
-        ) {
+        if (attachments.length > 0) {
 
           const attachment =
             attachments[0];
@@ -1020,144 +1109,6 @@
       formatEuro(
         usi - enz
       );
-
-
-    /* =========================
-       RIEPILOGO CATEGORIE
-    ========================= */
-
-    const categorySummary =
-      document.getElementById(
-        "categorySummary"
-      );
-
-
-    const categoryEntries =
-      Object.entries(
-        categoryTotals
-      ).sort(
-        (a, b) => b[1] - a[1]
-      );
-
-
-    if (
-      categoryEntries.length === 0
-    ) {
-
-      categorySummary.innerHTML =
-        '<div class="empty">Nessuna spesa ancora.</div>';
-
-    } else {
-
-      categorySummary.innerHTML =
-        categoryEntries
-          .map(
-            ([name, value]) => `
-
-              <div class="category-row">
-
-                <span class="category-name">
-                  🏷️
-                  ${escapeHtml(name)}
-                </span>
-
-                <strong class="category-value">
-                  ${formatEuro(value)}
-                </strong>
-
-              </div>
-
-            `
-          )
-          .join("");
-    }
-
-
-    /* =========================
-       CHI DEVE QUANTO
-    ========================= */
-
-    const whoOwes =
-      document.getElementById(
-        "whoOwes"
-      );
-
-
-    const half =
-      total / 2;
-
-
-    const difference =
-      usi - half;
-
-
-    if (
-      total === 0
-    ) {
-
-      whoOwes.innerHTML = `
-        <div class="who-owes-detail">
-          Nessuna spesa ancora.
-        </div>
-      `;
-
-    } else if (
-      Math.abs(difference) < 0.01
-    ) {
-
-      whoOwes.innerHTML = `
-
-        <div class="who-owes-main">
-          Siete in pari! ✅
-        </div>
-
-        <div class="who-owes-detail">
-          Avete pagato
-          ${formatEuro(half)}
-          a testa.
-        </div>
-
-      `;
-
-    } else if (
-      difference > 0
-    ) {
-
-      whoOwes.innerHTML = `
-
-        <div class="who-owes-main">
-          enz deve
-          ${formatEuro(difference)}
-          a usi.
-        </div>
-
-        <div class="who-owes-detail">
-          Quota a testa:
-          ${formatEuro(half)}
-        </div>
-
-      `;
-
-    } else {
-
-      whoOwes.innerHTML = `
-
-        <div class="who-owes-main">
-          usi deve
-          ${formatEuro(
-            Math.abs(difference)
-          )}
-          a enz.
-        </div>
-
-        <div class="who-owes-detail">
-          Quota a testa:
-          ${formatEuro(half)}
-        </div>
-
-      `;
-    }
-
   }
 
 
@@ -1527,6 +1478,8 @@
         );
 
 
+        /* Pulizia della spesa */
+
         await supabaseClient
           .from("expenses")
           .delete()
@@ -1582,6 +1535,8 @@
         );
 
 
+        /* Elimina file */
+
         await supabaseClient.storage
           .from(
             STORAGE_BUCKET
@@ -1590,6 +1545,8 @@
             filePath
           ]);
 
+
+        /* Elimina spesa */
 
         await supabaseClient
           .from("expenses")
