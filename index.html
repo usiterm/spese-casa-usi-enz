@@ -75,6 +75,7 @@
       border: 1px solid #d1d5db;
       border-radius: 12px;
       font-size: 16px;
+      background: white;
     }
 
     button {
@@ -90,12 +91,6 @@
       background: #111827;
       color: white;
       font-weight: bold;
-    }
-
-    .secondary {
-      background: #e5e7eb;
-      color: #111827;
-      margin-top: 8px;
     }
 
     .expense {
@@ -125,6 +120,17 @@
       margin-top: 5px;
       color: #6b7280;
       font-size: 14px;
+    }
+
+    .category {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 5px 9px;
+      border-radius: 8px;
+      background: #f3f4f6;
+      color: #374151;
+      font-size: 13px;
+      font-weight: bold;
     }
 
     .attachment {
@@ -170,6 +176,13 @@
       color: #6b7280;
       margin-top: 5px;
     }
+
+    .section-label {
+      display: block;
+      margin-top: 8px;
+      margin-bottom: 2px;
+      font-weight: bold;
+    }
   </style>
 </head>
 
@@ -185,9 +198,17 @@
   <div class="card" id="loginBox">
     <h2>Accedi</h2>
 
-    <input id="email" type="email" placeholder="Email">
+    <input
+      id="email"
+      type="email"
+      placeholder="Email"
+    >
 
-    <input id="password" type="password" placeholder="Password">
+    <input
+      id="password"
+      type="password"
+      placeholder="Password"
+    >
 
     <button class="primary" onclick="login()">
       Accedi
@@ -196,9 +217,13 @@
     <div id="loginError" class="error"></div>
   </div>
 
+
   <div id="appContent">
 
+    <!-- RIEPILOGO -->
+
     <div class="card">
+
       <div class="summary">
 
         <div class="summary-box">
@@ -222,9 +247,14 @@
         </div>
 
       </div>
+
     </div>
 
+
+    <!-- AGGIUNGI SPESA -->
+
     <div class="card">
+
       <h2>Aggiungi spesa</h2>
 
       <input
@@ -240,8 +270,24 @@
         placeholder="Importo €"
       >
 
+      <label class="section-label">
+        Categoria
+      </label>
+
+      <select id="category">
+        <option value="">
+          Seleziona categoria
+        </option>
+      </select>
+
+      <label class="section-label">
+        Chi ha pagato?
+      </label>
+
       <select id="paidBy">
-        <option value="">Chi ha pagato?</option>
+        <option value="">
+          Chi ha pagato?
+        </option>
       </select>
 
       <label class="file-label" for="attachment">
@@ -267,19 +313,26 @@
       </button>
 
       <div id="expenseError" class="error"></div>
+
     </div>
 
+
+    <!-- ELENCO SPESE -->
+
     <div class="card">
+
       <h2>Ultime spese</h2>
 
       <div id="expensesList" class="empty">
         Caricamento...
       </div>
+
     </div>
 
   </div>
 
 </div>
+
 
 <script>
 
@@ -289,17 +342,24 @@
   const SUPABASE_KEY =
     "sb_publishable_wnJn6MNhPSQ-Q-VpG6Dq-A_bbqaQbhu";
 
-  const supabaseClient = window.supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_KEY
-  );
+  const supabaseClient =
+    window.supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_KEY
+    );
+
 
   const HOUSEHOLD_ID =
     "68c527c5-6ff5-4df8-9fa2-5ddaec4cdb8a";
 
-  const STORAGE_BUCKET = "Allegati";
 
-  const MAX_FILE_SIZE = 10 * 1024 * 1024;
+  const STORAGE_BUCKET =
+    "Allegati";
+
+
+  const MAX_FILE_SIZE =
+    10 * 1024 * 1024;
+
 
   const ALLOWED_TYPES = [
     "image/jpeg",
@@ -307,87 +367,218 @@
     "application/pdf"
   ];
 
+
   let currentUser = null;
+
   let members = [];
+
+  let categories = [];
+
+
+  // ================================
+  // AVVIO APP
+  // ================================
 
   async function startApp() {
 
     const { data } =
       await supabaseClient.auth.getSession();
 
+
     if (!data.session) {
-      document.getElementById("loginBox").style.display = "block";
+
+      document.getElementById("loginBox")
+        .style.display = "block";
+
       return;
     }
 
-    currentUser = data.session.user;
 
-    document.getElementById("appContent").style.display = "block";
+    currentUser =
+      data.session.user;
+
+
+    document.getElementById("appContent")
+      .style.display = "block";
+
 
     await loadMembers();
+
+    await loadCategories();
+
     await loadExpenses();
   }
 
 
+  // ================================
+  // LOGIN
+  // ================================
+
   async function login() {
 
     const email =
-      document.getElementById("email").value.trim();
+      document.getElementById("email")
+        .value
+        .trim();
+
 
     const password =
-      document.getElementById("password").value;
+      document.getElementById("password")
+        .value;
+
 
     const { error } =
       await supabaseClient.auth.signInWithPassword({
+
         email,
+
         password
+
       });
+
 
     if (error) {
 
-      document.getElementById("loginError").textContent =
-        error.message;
+      document.getElementById("loginError")
+        .textContent =
+          error.message;
 
       return;
     }
 
+
     location.reload();
   }
 
+
+  // ================================
+  // CARICA MEMBRI
+  // ================================
 
   async function loadMembers() {
 
     const { data, error } =
       await supabaseClient
         .from("household_members")
-        .select("user_id, display_name")
-        .eq("household_id", HOUSEHOLD_ID);
+        .select(
+          "user_id, display_name"
+        )
+        .eq(
+          "household_id",
+          HOUSEHOLD_ID
+        );
+
 
     if (error) {
+
       console.error(error);
+
       return;
     }
 
-    members = data || [];
+
+    members =
+      data || [];
+
 
     const select =
       document.getElementById("paidBy");
 
+
     select.innerHTML =
       '<option value="">Chi ha pagato?</option>';
+
 
     members.forEach(member => {
 
       const option =
         document.createElement("option");
 
-      option.value = member.user_id;
-      option.textContent = member.display_name;
+
+      option.value =
+        member.user_id;
+
+
+      option.textContent =
+        member.display_name;
+
 
       select.appendChild(option);
+
     });
   }
 
+
+  // ================================
+  // CARICA CATEGORIE
+  // ================================
+
+  async function loadCategories() {
+
+    const { data, error } =
+      await supabaseClient
+        .from("categories")
+        .select(
+          "id, name"
+        )
+        .eq(
+          "household_id",
+          HOUSEHOLD_ID
+        )
+        .order(
+          "name",
+          { ascending: true }
+        );
+
+
+    if (error) {
+
+      console.error(error);
+
+      document.getElementById("expenseError")
+        .textContent =
+          "Errore nel caricamento delle categorie: " +
+          error.message;
+
+      return;
+    }
+
+
+    categories =
+      data || [];
+
+
+    const select =
+      document.getElementById("category");
+
+
+    select.innerHTML =
+      '<option value="">Seleziona categoria</option>';
+
+
+    categories.forEach(category => {
+
+      const option =
+        document.createElement("option");
+
+
+      option.value =
+        category.id;
+
+
+      option.textContent =
+        category.name;
+
+
+      select.appendChild(option);
+
+    });
+  }
+
+
+  // ================================
+  // CARICA SPESE
+  // ================================
 
   async function loadExpenses() {
 
@@ -401,6 +592,11 @@
           amount,
           description,
           expense_date,
+          category_id,
+          categories (
+            id,
+            name
+          ),
           expense_attachments (
             id,
             file_name,
@@ -408,76 +604,153 @@
             file_type
           )
         `)
-        .eq("household_id", HOUSEHOLD_ID)
-        .order("expense_date", { ascending: false });
+        .eq(
+          "household_id",
+          HOUSEHOLD_ID
+        )
+        .order(
+          "expense_date",
+          { ascending: false }
+        );
+
 
     if (error) {
 
       console.error(error);
 
-      document.getElementById("expensesList").textContent =
-        "Errore nel caricamento delle spese.";
+      document.getElementById("expensesList")
+        .textContent =
+          "Errore nel caricamento delle spese.";
 
       return;
     }
 
-    const expenses = data || [];
+
+    const expenses =
+      data || [];
+
 
     let total = 0;
+
     let usi = 0;
+
     let enz = 0;
 
+
     const list =
-      document.getElementById("expensesList");
+      document.getElementById(
+        "expensesList"
+      );
+
 
     if (expenses.length === 0) {
 
       list.innerHTML =
-        '<div class="empty">Nessuna spesa ancora inserita.</div>';
+        '<div class="empty">' +
+        'Nessuna spesa ancora inserita.' +
+        '</div>';
 
     } else {
 
       list.innerHTML = "";
+
 
       for (const expense of expenses) {
 
         const amount =
           Number(expense.amount) || 0;
 
+
         total += amount;
+
 
         const member =
           members.find(
-            m => m.user_id === expense.paid_by
+            m =>
+              m.user_id ===
+              expense.paid_by
           );
 
+
         const name =
-          member ? member.display_name : "Utente";
+          member
+            ? member.display_name
+            : "Utente";
 
-        if (name.toLowerCase() === "usi") {
+
+        if (
+          name.toLowerCase() ===
+          "usi"
+        ) {
+
           usi += amount;
+
         }
 
-        if (name.toLowerCase() === "enz") {
+
+        if (
+          name.toLowerCase() ===
+          "enz"
+        ) {
+
           enz += amount;
+
         }
+
 
         const div =
           document.createElement("div");
 
-        div.className = "expense";
+
+        div.className =
+          "expense";
+
+
+        // ----------------------------
+        // CATEGORIA
+        // ----------------------------
+
+        let categoryHtml = "";
+
+
+        if (
+          expense.categories &&
+          expense.categories.name
+        ) {
+
+          categoryHtml = `
+            <div class="category">
+              🏷️ ${escapeHtml(
+                expense.categories.name
+              )}
+            </div>
+          `;
+
+        }
+
+
+        // ----------------------------
+        // ALLEGATO
+        // ----------------------------
 
         let attachmentHtml = "";
 
+
         const attachments =
-          expense.expense_attachments || [];
+          expense.expense_attachments ||
+          [];
+
 
         if (attachments.length > 0) {
 
           const attachment =
             attachments[0];
 
-          const { data: signedData, error: signedError } =
+
+          const {
+            data: signedData,
+            error: signedError
+          } =
             await supabaseClient.storage
               .from(STORAGE_BUCKET)
               .createSignedUrl(
@@ -485,12 +758,18 @@
                 3600
               );
 
-          if (!signedError && signedData?.signedUrl) {
+
+          if (
+            !signedError &&
+            signedData?.signedUrl
+          ) {
 
             const icon =
-              attachment.file_type === "application/pdf"
+              attachment.file_type ===
+              "application/pdf"
                 ? "📄"
                 : "📷";
+
 
             attachmentHtml = `
               <a
@@ -499,17 +778,30 @@
                 target="_blank"
                 rel="noopener"
               >
-                ${icon} ${escapeHtml(attachment.file_name)}
+                ${icon}
+                ${escapeHtml(
+                  attachment.file_name
+                )}
               </a>
             `;
+
           }
         }
 
+
+        // ----------------------------
+        // HTML SPESA
+        // ----------------------------
+
         div.innerHTML = `
+
           <div class="expense-top">
 
             <div class="expense-description">
-              ${escapeHtml(expense.description || "Spesa")}
+              ${escapeHtml(
+                expense.description ||
+                "Spesa"
+              )}
             </div>
 
             <div class="expense-amount">
@@ -518,15 +810,31 @@
 
           </div>
 
+
           <div class="expense-info">
-            Pagata da ${escapeHtml(name)}
-            · ${escapeHtml(expense.expense_date)}
+
+            Pagata da
+            ${escapeHtml(name)}
+
+            ·
+
+            ${escapeHtml(
+              expense.expense_date
+            )}
+
           </div>
+
+
+          ${categoryHtml}
+
 
           ${attachmentHtml}
 
+
           <button
-            onclick="deleteExpense('${expense.id}')"
+            onclick="deleteExpense(
+              '${expense.id}'
+            )"
             style="
               margin-top:10px;
               background:#fee2e2;
@@ -535,25 +843,42 @@
           >
             🗑️ Elimina
           </button>
+
         `;
 
+
         list.appendChild(div);
+
       }
     }
 
-    document.getElementById("total").textContent =
-      formatEuro(total);
 
-    document.getElementById("usiTotal").textContent =
-      formatEuro(usi);
+    document.getElementById("total")
+      .textContent =
+        formatEuro(total);
 
-    document.getElementById("enzTotal").textContent =
-      formatEuro(enz);
 
-    document.getElementById("balance").textContent =
-      formatEuro(usi - enz);
+    document.getElementById("usiTotal")
+      .textContent =
+        formatEuro(usi);
+
+
+    document.getElementById("enzTotal")
+      .textContent =
+        formatEuro(enz);
+
+
+    document.getElementById("balance")
+      .textContent =
+        formatEuro(
+          usi - enz
+        );
   }
 
+
+  // ================================
+  // ELIMINA SPESA
+  // ================================
 
   async function deleteExpense(id) {
 
@@ -562,18 +887,26 @@
         "Sei sicuro di voler eliminare questa spesa?"
       );
 
+
     if (!conferma) return;
 
 
-    /*
-      Prima recuperiamo l'allegato, se esiste.
-    */
+    // Recuperiamo allegati
 
-    const { data: attachments, error: attachmentReadError } =
+    const {
+      data: attachments,
+      error: attachmentReadError
+    } =
       await supabaseClient
         .from("expense_attachments")
-        .select("id, file_path")
-        .eq("expense_id", id);
+        .select(
+          "id, file_path"
+        )
+        .eq(
+          "expense_id",
+          id
+        );
+
 
     if (attachmentReadError) {
 
@@ -586,19 +919,26 @@
     }
 
 
-    /*
-      Eliminiamo il file fisico dallo Storage.
-    */
+    // Eliminiamo i file dallo Storage
 
-    if (attachments && attachments.length > 0) {
+    if (
+      attachments &&
+      attachments.length > 0
+    ) {
 
       const paths =
-        attachments.map(a => a.file_path);
+        attachments.map(
+          a => a.file_path
+        );
 
-      const { error: storageError } =
+
+      const {
+        error: storageError
+      } =
         await supabaseClient.storage
           .from(STORAGE_BUCKET)
           .remove(paths);
+
 
       if (storageError) {
 
@@ -612,15 +952,19 @@
     }
 
 
-    /*
-      Eliminiamo il collegamento dell'allegato.
-    */
+    // Eliminiamo collegamento allegati
 
-    const { error: attachmentDeleteError } =
+    const {
+      error: attachmentDeleteError
+    } =
       await supabaseClient
         .from("expense_attachments")
         .delete()
-        .eq("expense_id", id);
+        .eq(
+          "expense_id",
+          id
+        );
+
 
     if (attachmentDeleteError) {
 
@@ -633,15 +977,17 @@
     }
 
 
-    /*
-      Infine eliminiamo la spesa.
-    */
+    // Eliminiamo la spesa
 
     const { error } =
       await supabaseClient
         .from("expenses")
         .delete()
-        .eq("id", id);
+        .eq(
+          "id",
+          id
+        );
+
 
     if (error) {
 
@@ -653,36 +999,65 @@
       return;
     }
 
+
     await loadExpenses();
   }
 
 
+  // ================================
+  // AGGIUNGI SPESA
+  // ================================
+
   async function addExpense() {
 
     const description =
-      document.getElementById("description")
-        .value
-        .trim();
+      document.getElementById(
+        "description"
+      )
+      .value
+      .trim();
+
 
     const amount =
       Number(
-        document.getElementById("amount").value
+        document.getElementById(
+          "amount"
+        ).value
       );
 
+
     const paidBy =
-      document.getElementById("paidBy").value;
+      document.getElementById(
+        "paidBy"
+      ).value;
+
+
+    const categoryId =
+      document.getElementById(
+        "category"
+      ).value;
+
 
     const fileInput =
-      document.getElementById("attachment");
+      document.getElementById(
+        "attachment"
+      );
+
 
     const file =
       fileInput.files[0];
 
+
     const errorBox =
-      document.getElementById("expenseError");
+      document.getElementById(
+        "expenseError"
+      );
+
 
     errorBox.textContent = "";
 
+
+    // Controllo descrizione
 
     if (!description) {
 
@@ -693,7 +1068,12 @@
     }
 
 
-    if (!amount || amount <= 0) {
+    // Controllo importo
+
+    if (
+      !amount ||
+      amount <= 0
+    ) {
 
       errorBox.textContent =
         "Inserisci un importo valido.";
@@ -701,6 +1081,19 @@
       return;
     }
 
+
+    // Controllo categoria
+
+    if (!categoryId) {
+
+      errorBox.textContent =
+        "Seleziona una categoria.";
+
+      return;
+    }
+
+
+    // Controllo pagatore
 
     if (!paidBy) {
 
@@ -711,13 +1104,14 @@
     }
 
 
-    /*
-      Controllo allegato.
-    */
+    // Controllo allegato
 
     if (file) {
 
-      if (file.size > MAX_FILE_SIZE) {
+      if (
+        file.size >
+        MAX_FILE_SIZE
+      ) {
 
         errorBox.textContent =
           "Il file è troppo grande. Massimo 10 MB.";
@@ -725,7 +1119,12 @@
         return;
       }
 
-      if (!ALLOWED_TYPES.includes(file.type)) {
+
+      if (
+        !ALLOWED_TYPES.includes(
+          file.type
+        )
+      ) {
 
         errorBox.textContent =
           "Formato non valido. Usa JPG, PNG oppure PDF.";
@@ -735,26 +1134,42 @@
     }
 
 
-    /*
-      1. Creiamo prima la spesa.
-    */
+    // ----------------------------
+    // 1. CREA SPESA
+    // ----------------------------
 
-    const { data: expense, error } =
+    const {
+      data: expense,
+      error
+    } =
       await supabaseClient
         .from("expenses")
         .insert({
-          household_id: HOUSEHOLD_ID,
-          paid_by: paidBy,
-          category_id: null,
-          amount: amount,
-          description: description,
+
+          household_id:
+            HOUSEHOLD_ID,
+
+          paid_by:
+            paidBy,
+
+          category_id:
+            categoryId,
+
+          amount:
+            amount,
+
+          description:
+            description,
+
           expense_date:
             new Date()
               .toISOString()
               .split("T")[0]
+
         })
         .select()
         .single();
+
 
     if (error) {
 
@@ -768,15 +1183,18 @@
     }
 
 
-    /*
-      2. Se c'è un allegato, lo carichiamo.
-    */
+    // ----------------------------
+    // 2. CARICA ALLEGATO
+    // ----------------------------
 
     if (file) {
 
       const safeFileName =
-        file.name
-          .replace(/[^a-zA-Z0-9._-]/g, "_");
+        file.name.replace(
+          /[^a-zA-Z0-9._-]/g,
+          "_"
+        );
+
 
       const filePath =
         HOUSEHOLD_ID +
@@ -788,33 +1206,44 @@
         safeFileName;
 
 
-      const { error: uploadError } =
+      const {
+        error: uploadError
+      } =
         await supabaseClient.storage
           .from(STORAGE_BUCKET)
           .upload(
             filePath,
             file,
             {
-              cacheControl: "3600",
-              upsert: false,
-              contentType: file.type
+              cacheControl:
+                "3600",
+
+              upsert:
+                false,
+
+              contentType:
+                file.type
             }
           );
 
 
       if (uploadError) {
 
-        console.error(uploadError);
+        console.error(
+          uploadError
+        );
 
-        /*
-          Se il caricamento fallisce,
-          eliminiamo la spesa appena creata.
-        */
+
+        // Pulizia spesa
 
         await supabaseClient
           .from("expenses")
           .delete()
-          .eq("id", expense.id);
+          .eq(
+            "id",
+            expense.id
+          );
+
 
         errorBox.textContent =
           "Errore nel caricamento dell'allegato: " +
@@ -824,40 +1253,61 @@
       }
 
 
-      /*
-        3. Registriamo il collegamento
-        tra file e spesa.
-      */
+      // ----------------------------
+      // 3. REGISTRA ALLEGATO
+      // ----------------------------
 
-      const { error: attachmentError } =
+      const {
+        error: attachmentError
+      } =
         await supabaseClient
           .from("expense_attachments")
           .insert({
-            expense_id: expense.id,
-            file_name: file.name,
-            file_path: filePath,
-            file_type: file.type,
-            file_size: file.size
+
+            expense_id:
+              expense.id,
+
+            file_name:
+              file.name,
+
+            file_path:
+              filePath,
+
+            file_type:
+              file.type,
+
+            file_size:
+              file.size
+
           });
 
 
       if (attachmentError) {
 
-        console.error(attachmentError);
+        console.error(
+          attachmentError
+        );
 
-        /*
-          Pulizia del file se il collegamento
-          al database non viene creato.
-        */
+
+        // Pulizia file
 
         await supabaseClient.storage
           .from(STORAGE_BUCKET)
-          .remove([filePath]);
+          .remove([
+            filePath
+          ]);
+
+
+        // Pulizia spesa
 
         await supabaseClient
           .from("expenses")
           .delete()
-          .eq("id", expense.id);
+          .eq(
+            "id",
+            expense.id
+          );
+
 
         errorBox.textContent =
           "Errore nel salvataggio dell'allegato: " +
@@ -868,38 +1318,93 @@
     }
 
 
-    /*
-      Pulizia del modulo.
-    */
+    // ----------------------------
+    // 4. PULIZIA FORM
+    // ----------------------------
 
-    document.getElementById("description").value = "";
-    document.getElementById("amount").value = "";
-    document.getElementById("paidBy").value = "";
-    document.getElementById("attachment").value = "";
+    document.getElementById(
+      "description"
+    ).value = "";
+
+
+    document.getElementById(
+      "amount"
+    ).value = "";
+
+
+    document.getElementById(
+      "category"
+    ).value = "";
+
+
+    document.getElementById(
+      "paidBy"
+    ).value = "";
+
+
+    document.getElementById(
+      "attachment"
+    ).value = "";
+
 
     await loadExpenses();
   }
 
 
+  // ================================
+  // FORMATO EURO
+  // ================================
+
   function formatEuro(value) {
 
-    return new Intl.NumberFormat("it-IT", {
-      style: "currency",
-      currency: "EUR"
-    }).format(value);
+    return new Intl.NumberFormat(
+      "it-IT",
+      {
+        style: "currency",
+        currency: "EUR"
+      }
+    ).format(value);
+
   }
 
+
+  // ================================
+  // SICUREZZA HTML
+  // ================================
 
   function escapeHtml(value) {
 
     return String(value)
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
+
+      .replaceAll(
+        "&",
+        "&amp;"
+      )
+
+      .replaceAll(
+        "<",
+        "&lt;"
+      )
+
+      .replaceAll(
+        ">",
+        "&gt;"
+      )
+
+      .replaceAll(
+        '"',
+        "&quot;"
+      )
+
+      .replaceAll(
+        "'",
+        "&#039;"
+      );
+
   }
 
+
+  // AVVIO
 
   startApp();
 
